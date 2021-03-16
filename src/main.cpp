@@ -22,7 +22,7 @@ const int   daylightOffset = 0; // seconds
 const char* mqttServer = "";
 const char* mqttClientId = "arduino";
 const int mqttPort = 1883;
-const int mqttConnectionRetryCount = 10;
+const int mqttRetryCount = 10;
 
 // Deep sleep
 const int timeToSleep = 60; // seconds
@@ -209,19 +209,19 @@ String createMqttMessage(int startIndex) {
 }
 
 void onWiFiGotIp(WiFiEvent_t event, WiFiEventInfo_t info) {
-  int retryCount = mqttConnectionRetryCount;
+  int connectionRetryCount = mqttRetryCount;
 
   syncTime();
 
   Serial.println("Connecting to MQTT");
   client.begin(mqttServer, mqttPort, net);
 
-  while (!client.connect(mqttClientId) && retryCount > 0) {
-    delay(1000);
-    retryCount--;
+  while (!client.connect(mqttClientId) && connectionRetryCount > 0) {
+    myDelay(1000);
+    connectionRetryCount--;
   }
 
-  if (retryCount == 0) {
+  if (connectionRetryCount == 0) {
     Serial.println("Connecting to MQTT failed.");
     sleep();
   }
@@ -235,15 +235,21 @@ void onWiFiGotIp(WiFiEvent_t event, WiFiEventInfo_t info) {
   }
 
   String message = createMqttMessage(startIndex);
+  int publishRetryCount = mqttRetryCount;
 
   // Send MQTT message
   Serial.print("Sending message to MQTT: ");
   Serial.println(message);
-  if (!client.publish("temperature", message)) {
+  while (!client.publish("temperature", message) && publishRetryCount > 0) {
+    myDelay(1000);
+    publishRetryCount--;
+  }
+
+  if (publishRetryCount == 0) {
     Serial.println("Sending MQTT message failed.");
   }
-  myDelay(1000);
 
+  myDelay(1000);
   sleep();
 }
 
